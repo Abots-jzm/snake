@@ -17,7 +17,7 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut snake = Snake::spawn_on_map(5, 5, 5);
+    let mut snake = Snake::spawn_on_map(10, 5, 10);
     let mut step_timer: f32 = 0.;
 
     loop {

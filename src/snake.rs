@@ -1,7 +1,9 @@
 use macroquad::prelude::*;
 
 pub const CELL_SIZE: f32 = 15.;
-pub const SNAKE_SPEED: f32 = 20.;
+// pub const SNAKE_SPEED: f32 = 20.;
+pub const SNAKE_SPEED: f32 = 5.;
+pub const CELL_GAP: f32 = 1.;
 
 pub struct Snake {
     segments: Vec<SnakeSegment>,
@@ -38,12 +40,14 @@ impl Snake {
         self.segments.iter().enumerate().for_each(|(i, segment)| {
             let draw_location_x: f32;
             let draw_location_y: f32;
+            let move_direction: (i32, i32);
 
             if i == 0 {
                 draw_location_x =
                     (segment.cur.0 as f32 + self.cur_directions.0 as f32 * ratio) * CELL_SIZE;
                 draw_location_y =
                     (segment.cur.1 as f32 + self.cur_directions.1 as f32 * ratio) * CELL_SIZE;
+                move_direction = self.cur_directions;
             } else {
                 let future_pos = self.segments[i - 1].cur;
                 draw_location_x = (segment.cur.0 as f32 * (1.0 - ratio)
@@ -52,38 +56,87 @@ impl Snake {
                 draw_location_y = (segment.cur.1 as f32 * (1.0 - ratio)
                     + future_pos.1 as f32 * ratio)
                     * CELL_SIZE;
+
+                move_direction = (
+                    future_pos.0 as i32 - segment.cur.0 as i32,
+                    future_pos.1 as i32 - segment.cur.1 as i32,
+                );
             }
 
-            draw_rectangle(
-                draw_location_x,
-                draw_location_y,
-                CELL_SIZE,
-                CELL_SIZE,
-                GREEN,
-            );
+            match move_direction {
+                (1, 0) => draw_rectangle(
+                    draw_location_x + CELL_GAP / 2.0,
+                    draw_location_y + CELL_GAP / 2.0,
+                    CELL_SIZE,
+                    CELL_SIZE - CELL_GAP,
+                    GREEN,
+                ),
+                (-1, 0) => draw_rectangle(
+                    draw_location_x - CELL_GAP / 2.0,
+                    draw_location_y + CELL_GAP / 2.0,
+                    CELL_SIZE,
+                    CELL_SIZE - CELL_GAP,
+                    GREEN,
+                ),
+                (0, 1) => draw_rectangle(
+                    draw_location_x + CELL_GAP / 2.0,
+                    draw_location_y + CELL_GAP / 2.0,
+                    CELL_SIZE - CELL_GAP,
+                    CELL_SIZE,
+                    GREEN,
+                ),
+                (0, -1) => draw_rectangle(
+                    draw_location_x + CELL_GAP / 2.0,
+                    draw_location_y - CELL_GAP / 2.0,
+                    CELL_SIZE - CELL_GAP,
+                    CELL_SIZE,
+                    GREEN,
+                ),
+                _ => {}
+            }
 
             // Add corner pieces for turns to fill gaps
-            if i > 0 {
+            if i > 0 && i < self.segments.len() - 1 {
                 let prev_segment = &self.segments[i - 1];
+                let next_segment = &self.segments[i + 1];
 
-                // Check if this is a turn by comparing the current segment's position with previous one
-                let dx = prev_segment.cur.0 as i32 - segment.cur.0 as i32;
-                let dy = prev_segment.cur.1 as i32 - segment.cur.1 as i32;
+                // A corner is formed when previous and next segments have different directions
+                // Check if the x or y positions are different from both neighbors
+                let is_corner = prev_segment.cur.0 != next_segment.cur.0
+                    && prev_segment.cur.1 != next_segment.cur.1;
 
-                // If there's a turn, draw a connecting piece
-                if (dx != 0 && dy != 0)
-                    || (i > 1
-                        && ((prev_segment.cur.0 != prev_segment.prev.0)
-                            || (prev_segment.cur.1 != prev_segment.prev.1)))
-                {
-                    // Draw corner piece at the previous segment's position
-                    draw_rectangle(
-                        prev_segment.cur.0 as f32 * CELL_SIZE,
-                        prev_segment.cur.1 as f32 * CELL_SIZE,
-                        CELL_SIZE,
-                        CELL_SIZE,
-                        GREEN,
-                    );
+                if is_corner {
+                    match move_direction {
+                        (1, 0) => draw_rectangle(
+                            (segment.cur.0 as f32 * CELL_SIZE) + CELL_GAP / 2.0,
+                            (segment.cur.1 as f32 * CELL_SIZE) + CELL_GAP / 2.0,
+                            CELL_SIZE,
+                            CELL_SIZE - CELL_GAP,
+                            GREEN,
+                        ),
+                        (-1, 0) => draw_rectangle(
+                            (segment.cur.0 as f32 * CELL_SIZE) - CELL_GAP / 2.0,
+                            (segment.cur.1 as f32 * CELL_SIZE) + CELL_GAP / 2.0,
+                            CELL_SIZE,
+                            CELL_SIZE - CELL_GAP,
+                            GREEN,
+                        ),
+                        (0, 1) => draw_rectangle(
+                            (segment.cur.0 as f32 * CELL_SIZE) + CELL_GAP / 2.0,
+                            (segment.cur.1 as f32 * CELL_SIZE) + CELL_GAP / 2.0,
+                            CELL_SIZE - CELL_GAP,
+                            CELL_SIZE,
+                            GREEN,
+                        ),
+                        (0, -1) => draw_rectangle(
+                            (segment.cur.0 as f32 * CELL_SIZE) + CELL_GAP / 2.0,
+                            (segment.cur.1 as f32 * CELL_SIZE) - CELL_GAP / 2.0,
+                            CELL_SIZE - CELL_GAP,
+                            CELL_SIZE,
+                            GREEN,
+                        ),
+                        _ => {}
+                    }
                 }
             }
         });
