@@ -49,12 +49,15 @@ impl Game {
         self.step_timer += delta_time;
 
         if self.step_timer >= 1. / SNAKE_SPEED {
-            self.snake.step();
+            let (head, tail) = self.snake.step();
+            // remove head from open_cells
+            self.open_cells.retain(|&cell| cell != head);
+            // add tail to open_cells
+
             if self.snake.is_eating(self.apple) {
                 self.score += 1;
                 self.snake.grow();
-                // Remove the eaten apple from open_cells
-                self.open_cells.retain(|&cell| cell != self.apple);
+
                 // Spawn a new apple
                 if !self.open_cells.is_empty() {
                     self.apple = self.spawn_apple(&self.open_cells);
@@ -62,6 +65,8 @@ impl Game {
                     // No more open cells, game over
                     self.is_over = true;
                 }
+            } else {
+                self.open_cells.push(tail);
             }
 
             self.check_for_death();
@@ -142,23 +147,6 @@ impl Game {
     }
 
     fn reset(&mut self) {
-        //     self.score = 0;
-        //     self.is_over = false;
-        //     self.snake = Snake::spawn_on_map(5, 5, 5);
-        //     self.step_timer = 0.0;
-        //     self.open_cells = Vec::new();
-        //     for x in 0..(screen_width as usize / CELL_SIZE as usize) {
-        //         for y in 0..(screen_height as usize / CELL_SIZE as usize) {
-        //             if !self.snake.segments.iter().any(|s| s.cur == (x, y)) {
-        //                 self.open_cells.push((x, y));
-        //             }
-        //         }
-        //     }
-        //     rand::srand(macroquad::miniquad::date::now() as _);
-        //     let apple_index = rand::gen_range(0, self.open_cells.len());
-        //     self.apple = self.open_cells[apple_index];
-        // }
-
         let screen_width = screen_width() as usize;
         let screen_height = screen_height() as usize;
 

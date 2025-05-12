@@ -194,7 +194,7 @@ impl Snake {
         self.future_directions = new_direction;
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> ((usize, usize), (usize, usize)) {
         // Update direction if not opposite
         if self.cur_directions.0 + self.future_directions.0 != 0
             || self.cur_directions.1 + self.future_directions.1 != 0
@@ -218,6 +218,11 @@ impl Snake {
         for i in 1..self.segments.len() {
             self.segments[i].cur = self.segments[i - 1].prev;
         }
+
+        // Return the new head and tail positions
+        let head_pos = self.segments[0].cur;
+        let tail_pos = self.segments[self.segments.len() - 1].prev;
+        (head_pos, tail_pos)
     }
 
     pub fn is_dead(&self) -> bool {
