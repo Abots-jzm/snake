@@ -1,9 +1,8 @@
 use macroquad::prelude::*;
 
 pub const CELL_SIZE: f32 = 15.;
-// pub const SNAKE_SPEED: f32 = 20.;
 pub const SNAKE_SPEED: f32 = 5.;
-pub const CELL_GAP: f32 = 1.;
+pub const CELL_GAP: f32 = 5.;
 
 pub struct Snake {
     segments: Vec<SnakeSegment>,
@@ -33,38 +32,104 @@ impl Snake {
     }
 
     pub fn draw(&self, snake_timer: f32) {
-        let ratio = snake_timer * SNAKE_SPEED;
+        let ratio = (snake_timer * SNAKE_SPEED).min(1.0);
+        let mut last_was_corner = false;
 
-        self.segments.iter().enumerate().for_each(|(i, segment)| {
-            let (draw_location_x, draw_location_y, move_direction) = if i == 0 {
-                // Head segment
-                (
-                    (segment.cur.0 as f32 + self.cur_directions.0 as f32 * ratio) * CELL_SIZE,
-                    (segment.cur.1 as f32 + self.cur_directions.1 as f32 * ratio) * CELL_SIZE,
-                    self.cur_directions,
-                )
+        for (i, segment) in self.segments.iter().enumerate() {
+            // Calculate the interpolated position and movement direction
+            let (draw_x, draw_y, direction) = self.calculate_segment_position(i, ratio);
+
+            // Draw the segment based on whether the last segment was a corner
+            if last_was_corner {
+                self.draw_corner_piece(segment, direction, ratio);
             } else {
-                // Body segments
-                let future_pos = self.segments[i - 1].cur;
-                (
-                    (segment.cur.0 as f32 * (1.0 - ratio) + future_pos.0 as f32 * ratio)
-                        * CELL_SIZE,
-                    (segment.cur.1 as f32 * (1.0 - ratio) + future_pos.1 as f32 * ratio)
-                        * CELL_SIZE,
-                    (
-                        future_pos.0 as i32 - segment.cur.0 as i32,
-                        future_pos.1 as i32 - segment.cur.1 as i32,
-                    ),
-                )
-            };
-
-            self.draw_segment(draw_location_x, draw_location_y, move_direction);
-
-            // Add corner pieces for turns to fill gaps
-            if i > 0 && i < self.segments.len() - 1 {
-                self.draw_corner_if_needed(i, segment, move_direction);
+                self.draw_segment(draw_x, draw_y, direction);
             }
-        });
+
+            // Check if this segment forms a corner piece
+            last_was_corner = i > 0 && i < self.segments.len() - 1 && self.is_corner_piece(i);
+
+            // Draw the current segment as a corner piece if needed
+            if last_was_corner {
+                let x = segment.cur.0 as f32 * CELL_SIZE;
+                let y = segment.cur.1 as f32 * CELL_SIZE;
+                self.draw_segment(x, y, direction);
+            }
+        }
+    }
+
+    fn calculate_segment_position(&self, index: usize, ratio: f32) -> (f32, f32, (i32, i32)) {
+        let segment = &self.segments[index];
+
+        if index == 0 {
+            // Head segment: interpolate between prev and cur positions
+            let prev = segment.prev;
+            let cur = segment.cur;
+            let x = (prev.0 as f32 * (1.0 - ratio) + cur.0 as f32 * ratio) * CELL_SIZE;
+            let y = (prev.1 as f32 * (1.0 - ratio) + cur.1 as f32 * ratio) * CELL_SIZE;
+            let dir = (cur.0 as i32 - prev.0 as i32, cur.1 as i32 - prev.1 as i32);
+
+            (x, y, dir)
+        } else {
+            // Body segments: interpolate toward the position of the segment ahead
+            let future_pos = self.segments[index - 1].cur;
+            let x =
+                (segment.cur.0 as f32 * (1.0 - ratio) + future_pos.0 as f32 * ratio) * CELL_SIZE;
+            let y =
+                (segment.cur.1 as f32 * (1.0 - ratio) + future_pos.1 as f32 * ratio) * CELL_SIZE;
+            let dir = (
+                future_pos.0 as i32 - segment.cur.0 as i32,
+                future_pos.1 as i32 - segment.cur.1 as i32,
+            );
+
+            (x, y, dir)
+        }
+    }
+
+    fn is_corner_piece(&self, index: usize) -> bool {
+        let prev_segment = &self.segments[index - 1];
+        let next_segment = &self.segments[index + 1];
+
+        // A corner is formed when previous and next segments have different directions
+        prev_segment.cur.0 != next_segment.cur.0 && prev_segment.cur.1 != next_segment.cur.1
+    }
+
+    fn draw_corner_piece(&self, segment: &SnakeSegment, direction: (i32, i32), ratio: f32) {
+        let (offset_x, offset_y, width, height) = match direction {
+            (1, 0) => (
+                CELL_GAP / 2. + (CELL_SIZE * ratio),
+                CELL_GAP / 2.0,
+                CELL_SIZE * 2. - CELL_GAP - (CELL_SIZE * ratio),
+                CELL_SIZE - CELL_GAP,
+            ),
+            (-1, 0) => (
+                CELL_GAP / 2. - CELL_SIZE,
+                CELL_GAP / 2.0,
+                CELL_SIZE * 2. - CELL_GAP - (CELL_SIZE * ratio),
+                CELL_SIZE - CELL_GAP,
+            ),
+            (0, 1) => (
+                CELL_GAP / 2.0,
+                CELL_GAP / 2. + (CELL_SIZE * ratio),
+                CELL_SIZE - CELL_GAP,
+                CELL_SIZE * 2. - CELL_GAP - (CELL_SIZE * ratio),
+            ),
+            (0, -1) => (
+                CELL_GAP / 2.0,
+                CELL_GAP / 2. - CELL_SIZE,
+                CELL_SIZE - CELL_GAP,
+                CELL_SIZE * 2. - CELL_GAP - (CELL_SIZE * ratio),
+            ),
+            _ => return,
+        };
+
+        draw_rectangle(
+            segment.cur.0 as f32 * CELL_SIZE + offset_x,
+            segment.cur.1 as f32 * CELL_SIZE + offset_y,
+            width,
+            height,
+            GREEN,
+        );
     }
 
     fn draw_segment(&self, x: f32, y: f32, direction: (i32, i32)) {
@@ -97,21 +162,6 @@ impl Snake {
         };
 
         draw_rectangle(x + offset_x, y + offset_y, width, height, GREEN);
-    }
-
-    fn draw_corner_if_needed(&self, i: usize, segment: &SnakeSegment, move_direction: (i32, i32)) {
-        let prev_segment = &self.segments[i - 1];
-        let next_segment = &self.segments[i + 1];
-
-        // A corner is formed when previous and next segments have different directions
-        let is_corner =
-            prev_segment.cur.0 != next_segment.cur.0 && prev_segment.cur.1 != next_segment.cur.1;
-
-        if is_corner {
-            let x = segment.cur.0 as f32 * CELL_SIZE;
-            let y = segment.cur.1 as f32 * CELL_SIZE;
-            self.draw_segment(x, y, move_direction);
-        }
     }
 
     pub fn listen_for_input(&mut self) {
