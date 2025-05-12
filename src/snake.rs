@@ -164,7 +164,7 @@ impl Snake {
         draw_rectangle(x + offset_x, y + offset_y, width, height, GREEN);
     }
 
-    pub fn listen_for_input(&mut self) {
+    pub fn handle_input(&mut self) {
         let new_direction = if is_key_down(KeyCode::Up) {
             (0, -1)
         } else if is_key_down(KeyCode::Down) {
@@ -204,5 +204,25 @@ impl Snake {
         for i in 1..self.segments.len() {
             self.segments[i].cur = self.segments[i - 1].prev;
         }
+    }
+
+    pub fn is_dead(&self) -> bool {
+        let map_width = screen_width() as usize / CELL_SIZE as usize;
+        let map_height = screen_height() as usize / CELL_SIZE as usize;
+        let head = &self.segments[0];
+
+        // Check if the head is out of bounds
+        if head.cur.0 >= map_width || head.cur.1 >= map_height {
+            return true;
+        }
+
+        // Check if the head collides with its own body
+        for segment in &self.segments[1..] {
+            if head.cur == segment.cur {
+                return true;
+            }
+        }
+
+        false
     }
 }

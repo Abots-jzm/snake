@@ -1,9 +1,9 @@
 use macroquad::prelude::*;
-use snake::SNAKE_SPEED;
 
+mod game;
 mod snake;
 
-use crate::snake::Snake;
+use crate::game::Game;
 
 fn window_conf() -> Conf {
     Conf {
@@ -17,21 +17,13 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut snake = Snake::spawn_on_map(10, 5, 10);
-    let mut step_timer: f32 = 0.;
+    let mut game = Game::new();
 
     loop {
         clear_background(BLACK);
-        let delta_time = get_frame_time();
-
-        snake.listen_for_input();
-        step_timer += delta_time;
-        if step_timer >= 1. / SNAKE_SPEED {
-            snake.step();
-            step_timer = 0.;
-        }
-        snake.draw(step_timer);
-
+        game.handle_input();
+        game.update(get_frame_time());
+        game.render();
         next_frame().await
     }
 }
