@@ -1,17 +1,17 @@
 use macroquad::prelude::*;
 
-pub const CELL_SIZE: f32 = 15.;
-pub const SNAKE_SPEED: f32 = 5.;
-pub const CELL_GAP: f32 = 5.;
+pub const CELL_SIZE: f32 = 10.;
+pub const SNAKE_SPEED: f32 = 10.;
+pub const CELL_GAP: f32 = 2.5;
 
 pub struct Snake {
-    segments: Vec<SnakeSegment>,
+    pub segments: Vec<SnakeSegment>,
     cur_directions: (i32, i32),
     future_directions: (i32, i32),
 }
 
-struct SnakeSegment {
-    cur: (usize, usize),
+pub struct SnakeSegment {
+    pub cur: (usize, usize),
     prev: (usize, usize),
 }
 
@@ -56,6 +56,20 @@ impl Snake {
                 self.draw_segment(x, y, direction);
             }
         }
+    }
+
+    pub fn is_eating(&self, apple: (usize, usize)) -> bool {
+        let head = &self.segments[0];
+        head.cur == apple
+    }
+
+    pub fn grow(&mut self) {
+        let last_segment = &self.segments[self.segments.len() - 1];
+        let new_segment = SnakeSegment {
+            cur: last_segment.cur,
+            prev: last_segment.cur,
+        };
+        self.segments.push(new_segment);
     }
 
     fn calculate_segment_position(&self, index: usize, ratio: f32) -> (f32, f32, (i32, i32)) {

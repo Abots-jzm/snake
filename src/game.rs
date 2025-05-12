@@ -1,22 +1,43 @@
 use macroquad::prelude::*;
 
-use crate::snake::Snake;
-use crate::snake::SNAKE_SPEED;
+use crate::snake::{Snake, CELL_GAP};
+use crate::snake::{CELL_SIZE, SNAKE_SPEED};
 
 pub struct Game {
     score: u32,
-    pub is_over: bool,
-    pub snake: Snake,
+    is_over: bool,
+    snake: Snake,
     step_timer: f32,
+    open_cells: Vec<(usize, usize)>,
+    apple: (usize, usize),
 }
 
 impl Game {
     pub fn new() -> Self {
+        let screen_width = screen_width() as usize;
+        let screen_height = screen_height() as usize;
+
+        let snake = Snake::spawn_on_map(5, 5, 5);
+        // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
+        let mut open_cells = Vec::new();
+        for x in 0..(screen_width / CELL_SIZE as usize) {
+            for y in 0..(screen_height / CELL_SIZE as usize) {
+                if !snake.segments.iter().any(|s| s.cur == (x, y)) {
+                    open_cells.push((x, y));
+                }
+            }
+        }
+        rand::srand(macroquad::miniquad::date::now() as _);
+        let apple_index = rand::gen_range(0, open_cells.len());
+        let apple = open_cells[apple_index];
+
         Game {
             score: 0,
             is_over: false,
-            snake: Snake::spawn_on_map(5, 5, 5),
+            snake,
             step_timer: 0.0,
+            open_cells,
+            apple,
         }
     }
 
@@ -29,6 +50,20 @@ impl Game {
 
         if self.step_timer >= 1. / SNAKE_SPEED {
             self.snake.step();
+            if self.snake.is_eating(self.apple) {
+                self.score += 1;
+                self.snake.grow();
+                // Remove the eaten apple from open_cells
+                self.open_cells.retain(|&cell| cell != self.apple);
+                // Spawn a new apple
+                if !self.open_cells.is_empty() {
+                    self.apple = self.spawn_apple(&self.open_cells);
+                } else {
+                    // No more open cells, game over
+                    self.is_over = true;
+                }
+            }
+
             self.check_for_death();
             self.step_timer = 0.;
         }
@@ -36,10 +71,32 @@ impl Game {
 
     pub fn render(&self) {
         self.snake.draw(self.step_timer);
+        self.draw_apple();
         self.draw_score();
         if self.is_over {
             self.draw_game_over();
         }
+    }
+
+    fn spawn_apple(&self, open_cells: &[(usize, usize)]) -> (usize, usize) {
+        let apple_index = rand::gen_range(0, open_cells.len());
+        open_cells[apple_index]
+    }
+
+    fn draw_apple(&self) {
+        // Calculate cell coordinates
+        let apple_x = self.apple.0 as f32 * CELL_SIZE;
+        let apple_y = self.apple.1 as f32 * CELL_SIZE;
+
+        // Calculate center of the cell accounting for gap
+        let center_x = apple_x + CELL_SIZE / 2.0;
+        let center_y = apple_y + CELL_SIZE / 2.0;
+
+        // Calculate radius of the apple
+        let radius = (CELL_SIZE - CELL_GAP) / 2.0;
+
+        // Draw the apple as a circle
+        draw_circle(center_x, center_y, radius, RED);
     }
 
     fn draw_score(&self) {
@@ -80,18 +137,50 @@ impl Game {
 
     fn check_for_death(&mut self) {
         if self.snake.is_dead() {
-            self.game_over();
+            self.is_over = true;
         }
     }
 
     fn reset(&mut self) {
+        //     self.score = 0;
+        //     self.is_over = false;
+        //     self.snake = Snake::spawn_on_map(5, 5, 5);
+        //     self.step_timer = 0.0;
+        //     self.open_cells = Vec::new();
+        //     for x in 0..(screen_width as usize / CELL_SIZE as usize) {
+        //         for y in 0..(screen_height as usize / CELL_SIZE as usize) {
+        //             if !self.snake.segments.iter().any(|s| s.cur == (x, y)) {
+        //                 self.open_cells.push((x, y));
+        //             }
+        //         }
+        //     }
+        //     rand::srand(macroquad::miniquad::date::now() as _);
+        //     let apple_index = rand::gen_range(0, self.open_cells.len());
+        //     self.apple = self.open_cells[apple_index];
+        // }
+
+        let screen_width = screen_width() as usize;
+        let screen_height = screen_height() as usize;
+
+        let snake = Snake::spawn_on_map(5, 5, 5);
+        // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
+        let mut open_cells = Vec::new();
+        for x in 0..(screen_width / CELL_SIZE as usize) {
+            for y in 0..(screen_height / CELL_SIZE as usize) {
+                if !snake.segments.iter().any(|s| s.cur == (x, y)) {
+                    open_cells.push((x, y));
+                }
+            }
+        }
+        rand::srand(macroquad::miniquad::date::now() as _);
+        let apple_index = rand::gen_range(0, open_cells.len());
+        let apple = open_cells[apple_index];
+
         self.score = 0;
         self.is_over = false;
-        self.snake = Snake::spawn_on_map(5, 5, 5);
         self.step_timer = 0.0;
-    }
-
-    fn game_over(&mut self) {
-        self.is_over = true;
+        self.open_cells = open_cells;
+        self.apple = apple;
+        self.snake = snake;
     }
 }
