@@ -14,14 +14,14 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
-        let screen_width = screen_width() as usize;
-        let screen_height = screen_height() as usize;
+        let screen_width = screen_width();
+        let screen_height = screen_height();
 
-        let snake = Snake::spawn_on_map(5, 5, 5);
+        let snake = Snake::spawn_on_map(5, 5, 4);
         // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
         let mut open_cells = Vec::new();
-        for x in 0..(screen_width / CELL_SIZE as usize) {
-            for y in 0..(screen_height / CELL_SIZE as usize) {
+        for x in 0..(screen_width as usize / CELL_SIZE as usize) {
+            for y in 0..(screen_height as usize / CELL_SIZE as usize) {
                 if !snake.segments.iter().any(|s| s.cur == (x, y)) {
                     open_cells.push((x, y));
                 }
@@ -150,7 +150,7 @@ impl Game {
         let screen_width = screen_width() as usize;
         let screen_height = screen_height() as usize;
 
-        let snake = Snake::spawn_on_map(5, 5, 5);
+        let snake = Snake::spawn_on_map(5, 5, 4);
         // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
         let mut open_cells = Vec::new();
         for x in 0..(screen_width / CELL_SIZE as usize) {
