@@ -7,7 +7,7 @@ pub const CELL_GAP: f32 = 2.5;
 pub struct Snake {
     pub segments: Vec<SnakeSegment>,
     cur_directions: (i32, i32),
-    future_directions: (i32, i32),
+    // future_direction: (i32, i32),
 }
 
 pub struct SnakeSegment {
@@ -27,7 +27,7 @@ impl Snake {
         Self {
             segments,
             cur_directions: (1, 0), // Start moving to the right
-            future_directions: (1, 0),
+                                    // future_direction: (1, 0),
         }
     }
 
@@ -178,29 +178,46 @@ impl Snake {
         draw_rectangle(x + offset_x, y + offset_y, width, height, GREEN);
     }
 
-    pub fn handle_input(&mut self) {
-        let new_direction = if is_key_down(KeyCode::Up) {
-            (0, -1)
-        } else if is_key_down(KeyCode::Down) {
-            (0, 1)
-        } else if is_key_down(KeyCode::Left) {
-            (-1, 0)
-        } else if is_key_down(KeyCode::Right) {
-            (1, 0)
-        } else {
-            return;
-        };
+    // pub fn handle_input(&mut self) {
+    //     let new_direction = if is_key_down(KeyCode::Up) {
+    //         (0, -1)
+    //     } else if is_key_down(KeyCode::Down) {
+    //         (0, 1)
+    //     } else if is_key_down(KeyCode::Left) {
+    //         (-1, 0)
+    //     } else if is_key_down(KeyCode::Right) {
+    //         (1, 0)
+    //     } else {
+    //         return;
+    //     };
 
-        self.future_directions = new_direction;
+    //     self.future_direction = new_direction;
+    // }
+
+    fn get_next_direction(&self, cycle: &Vec<(usize, usize)>) -> (i32, i32) {
+        // Get the next direction based on the cycle
+        let head = self.segments[0].cur;
+        let head_index = cycle.iter().position(|&pos| pos == head).unwrap_or(0);
+        let next_index = (head_index + 1) % cycle.len();
+        let next_pos = cycle[next_index];
+        let next_direction = (
+            next_pos.0 as i32 - head.0 as i32,
+            next_pos.1 as i32 - head.1 as i32,
+        );
+
+        return next_direction;
     }
 
-    pub fn step(&mut self) -> ((usize, usize), (usize, usize)) {
-        // Update direction if not opposite
-        if self.cur_directions.0 + self.future_directions.0 != 0
-            || self.cur_directions.1 + self.future_directions.1 != 0
-        {
-            self.cur_directions = self.future_directions;
-        }
+    pub fn step(&mut self, cycle: &Vec<(usize, usize)>) -> ((usize, usize), (usize, usize)) {
+        let future_direction = self.get_next_direction(cycle);
+
+        // // Update direction if not opposite
+        // if self.cur_directions.0 + future_direction.0 != 0
+        //     || self.cur_directions.1 + future_direction.1 != 0
+        // {
+        //     self.cur_directions = future_direction;
+        // }
+        self.cur_directions = future_direction;
 
         // Save current positions before moving
         for segment in &mut self.segments {

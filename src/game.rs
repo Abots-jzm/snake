@@ -58,7 +58,7 @@ impl Game {
         self.step_timer += delta_time;
 
         if self.step_timer >= 1. / SNAKE_SPEED {
-            let (head, tail) = self.snake.step();
+            let (head, tail) = self.snake.step(&self.cycle);
             // remove head from open_cells
             self.open_cells.retain(|&cell| cell != head);
             // add tail to open_cells
@@ -164,7 +164,7 @@ impl Game {
             return;
         }
 
-        self.snake.handle_input();
+        // self.snake.handle_input();
     }
 
     fn check_for_death(&mut self) {
