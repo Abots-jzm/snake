@@ -12,6 +12,8 @@ pub struct Game {
     open_cells: Vec<(usize, usize)>,
     apple: (usize, usize),
     cycle: Vec<(usize, usize)>,
+    draw_cycle: bool,
+    speed_multiplier: f32,
 }
 
 impl Game {
@@ -47,6 +49,8 @@ impl Game {
             open_cells,
             apple,
             cycle,
+            draw_cycle: false, // Default to false
+            speed_multiplier: 1.0,
         }
     }
 
@@ -57,7 +61,7 @@ impl Game {
 
         self.step_timer += delta_time;
 
-        if self.step_timer >= 1. / SNAKE_SPEED {
+        if self.step_timer >= 1. / (SNAKE_SPEED * self.speed_multiplier) {
             let (head, tail) = self.snake.step(&self.cycle, self.apple);
             // remove head from open_cells
             self.open_cells.retain(|&cell| cell != head);
@@ -81,18 +85,25 @@ impl Game {
             self.check_for_death();
             self.step_timer = 0.;
         }
+
+        // Update UI controls
+        self.update_controls();
     }
 
     pub fn render(&self) {
+        if self.draw_cycle {
+            self.draw_cycle_path();
+        }
         self.snake.draw(self.step_timer);
         self.draw_apple();
         self.draw_score();
-        // self.draw_cycle();
+        self.draw_controls();
         if self.is_over {
             self.draw_game_over();
         }
     }
-    pub fn draw_cycle(&self) {
+
+    fn draw_cycle_path(&self) {
         // Draw a thin line connecting all points in the cycle
         for i in 0..self.cycle.len() {
             let (x1, y1) = self.cycle[i];
@@ -107,6 +118,138 @@ impl Game {
 
             // Draw a thin line between the centers
             draw_line(start_x, start_y, end_x, end_y, 1.0, RED);
+        }
+    }
+
+    fn draw_controls(&self) {
+        // Position controls in top right corner
+        let screen_width = screen_width();
+        let control_y = 10.0;
+        let control_height = 50.0;
+        let control_width = 200.0;
+        let control_x = screen_width - control_width - 10.0;
+
+        draw_rectangle(
+            control_x,
+            control_y,
+            control_width,
+            control_height,
+            Color::new(0.0, 0.0, 0.0, 0.5),
+        );
+
+        // Draw speed control
+        let speed_y = control_y + 10.0;
+        draw_text("Speed:", control_x + 10.0, speed_y, 15.0, WHITE);
+
+        // Speed slider background
+        let slider_x = control_x + 70.0;
+        let slider_width = 100.0;
+        let slider_height = 10.0;
+        draw_rectangle(
+            slider_x,
+            speed_y - slider_height,
+            slider_width,
+            slider_height,
+            GRAY,
+        );
+
+        // Speed slider knob position - map from 0.5-100.0 to 0.0-1.0
+        let normalized_speed = (self.speed_multiplier - 0.5) / 99.5;
+        let knob_x = slider_x + normalized_speed * slider_width;
+        let knob_size = 15.0;
+        draw_circle(
+            knob_x,
+            speed_y - slider_height / 2.0,
+            knob_size / 2.0,
+            WHITE,
+        );
+
+        // Speed value
+        draw_text(
+            &format!("{:.1}x", self.speed_multiplier),
+            slider_x + slider_width + 10.0,
+            speed_y,
+            15.0,
+            WHITE,
+        );
+
+        // Draw cycle visibility checkbox
+        let cycle_y = speed_y + 25.0;
+        draw_text("Show Cycle:", control_x + 10.0, cycle_y, 15.0, WHITE);
+
+        // Checkbox
+        let checkbox_x = slider_x;
+        let checkbox_size = 15.0;
+        draw_rectangle(
+            checkbox_x,
+            cycle_y - checkbox_size,
+            checkbox_size,
+            checkbox_size,
+            GRAY,
+        );
+
+        // Check mark if enabled
+        if self.draw_cycle {
+            draw_line(
+                checkbox_x + 2.0,
+                cycle_y - checkbox_size / 2.0,
+                checkbox_x + checkbox_size / 2.0,
+                cycle_y - 2.0,
+                2.0,
+                WHITE,
+            );
+            draw_line(
+                checkbox_x + checkbox_size / 2.0,
+                cycle_y - 2.0,
+                checkbox_x + checkbox_size - 2.0,
+                cycle_y - checkbox_size + 2.0,
+                2.0,
+                WHITE,
+            );
+        }
+    }
+
+    fn update_controls(&mut self) {
+        // Check for speed slider interaction
+        let screen_width = screen_width();
+        let control_y = 10.0;
+        let speed_y = control_y + 10.0;
+        let control_width = 200.0;
+        let control_x = screen_width - control_width - 10.0;
+        let slider_x = control_x + 70.0;
+        let slider_width = 100.0;
+        let slider_height = 10.0;
+
+        // Check if mouse is pressed on slider
+        if is_mouse_button_down(MouseButton::Left) {
+            let mouse_pos = mouse_position();
+
+            // Speed slider interaction
+            if mouse_pos.1 >= speed_y - slider_height - 10.0
+                && mouse_pos.1 <= speed_y + 10.0
+                && mouse_pos.0 >= slider_x
+                && mouse_pos.0 <= slider_x + slider_width
+            {
+                // Calculate new speed value
+                let normalized_pos = (mouse_pos.0 - slider_x) / slider_width;
+                let clamped_pos = normalized_pos.max(0.0).min(1.0);
+                // Map 0.0-1.0 to 0.5-100.0
+                self.speed_multiplier = 0.5 + (clamped_pos * 99.5);
+            }
+
+            // Cycle visibility checkbox interaction
+            let cycle_y = speed_y + 25.0;
+            let checkbox_x = slider_x;
+            let checkbox_size = 15.0;
+
+            if is_mouse_button_pressed(MouseButton::Left)
+                && mouse_pos.1 >= cycle_y - checkbox_size
+                && mouse_pos.1 <= cycle_y
+                && mouse_pos.0 >= checkbox_x
+                && mouse_pos.0 <= checkbox_x + checkbox_size
+            {
+                self.draw_cycle = !self.draw_cycle;
+            }
         }
     }
 
@@ -199,5 +342,6 @@ impl Game {
         self.apple = apple;
         self.snake = snake;
         self.cycle = cycle;
+        // Keep existing settings for draw_cycle and speed_multiplier
     }
 }

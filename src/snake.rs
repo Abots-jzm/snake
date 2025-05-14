@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 
-pub const SNAKE_SPEED: f32 = 500.;
-pub const CELL_SIZE: f32 = 10.;
+pub const SNAKE_SPEED: f32 = 100.;
+pub const CELL_SIZE: f32 = 25.;
 pub const CELL_GAP: f32 = 2.5;
 const GROWTH_BUFFER_FOR_SHORTCUT: usize = 3;
 
