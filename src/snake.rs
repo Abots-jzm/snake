@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 
-pub const CELL_SIZE: f32 = 10.;
 pub const SNAKE_SPEED: f32 = 15.;
+pub const CELL_SIZE: f32 = 10.;
 pub const CELL_GAP: f32 = 2.5;
 
 pub struct Snake {

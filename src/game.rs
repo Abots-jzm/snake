@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 
+use crate::bot::generate_hamiltonian_cycle;
 use crate::snake::{Snake, CELL_GAP};
 use crate::snake::{CELL_SIZE, SNAKE_SPEED};
 
@@ -10,6 +11,7 @@ pub struct Game {
     step_timer: f32,
     open_cells: Vec<(usize, usize)>,
     apple: (usize, usize),
+    cycle: Vec<(usize, usize)>,
 }
 
 impl Game {
@@ -19,9 +21,13 @@ impl Game {
 
         let snake = Snake::spawn_on_map(5, 5, 4);
         // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
+
+        let grid_width = screen_width / CELL_SIZE;
+        let grid_height = screen_height / CELL_SIZE;
+
         let mut open_cells = Vec::new();
-        for x in 0..(screen_width as usize / CELL_SIZE as usize) {
-            for y in 0..(screen_height as usize / CELL_SIZE as usize) {
+        for x in 0..(grid_width as usize) {
+            for y in 0..(grid_height as usize) {
                 if !snake.segments.iter().any(|s| s.cur == (x, y)) {
                     open_cells.push((x, y));
                 }
@@ -31,6 +37,8 @@ impl Game {
         let apple_index = rand::gen_range(0, open_cells.len());
         let apple = open_cells[apple_index];
 
+        let cycle = generate_hamiltonian_cycle(grid_width as i32, grid_height as i32);
+
         Game {
             score: 0,
             is_over: false,
@@ -38,6 +46,7 @@ impl Game {
             step_timer: 0.0,
             open_cells,
             apple,
+            cycle,
         }
     }
 
@@ -78,8 +87,26 @@ impl Game {
         self.snake.draw(self.step_timer);
         self.draw_apple();
         self.draw_score();
+        self.draw_cycle();
         if self.is_over {
             self.draw_game_over();
+        }
+    }
+    pub fn draw_cycle(&self) {
+        // Draw a thin line connecting all points in the cycle
+        for i in 0..self.cycle.len() {
+            let (x1, y1) = self.cycle[i];
+            // Get the next point in the cycle (wrapping around to the first point)
+            let (x2, y2) = self.cycle[(i + 1) % self.cycle.len()];
+
+            // Calculate center coordinates of each cell
+            let start_x = x1 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
+            let start_y = y1 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
+            let end_x = x2 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
+            let end_y = y2 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
+
+            // Draw a thin line between the centers
+            draw_line(start_x, start_y, end_x, end_y, 1.0, RED);
         }
     }
 
@@ -147,22 +174,23 @@ impl Game {
     }
 
     fn reset(&mut self) {
-        let screen_width = screen_width() as usize;
-        let screen_height = screen_height() as usize;
+        let grid_width = screen_width() / CELL_SIZE;
+        let grid_height = screen_height() / CELL_SIZE;
 
         let snake = Snake::spawn_on_map(5, 5, 4);
         // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
         let mut open_cells = Vec::new();
-        for x in 0..(screen_width / CELL_SIZE as usize) {
-            for y in 0..(screen_height / CELL_SIZE as usize) {
+        for x in 0..(grid_width as usize) {
+            for y in 0..(grid_height as usize) {
                 if !snake.segments.iter().any(|s| s.cur == (x, y)) {
                     open_cells.push((x, y));
                 }
             }
         }
-        rand::srand(macroquad::miniquad::date::now() as _);
+
         let apple_index = rand::gen_range(0, open_cells.len());
         let apple = open_cells[apple_index];
+        let cycle = generate_hamiltonian_cycle(grid_width as i32, grid_height as i32);
 
         self.score = 0;
         self.is_over = false;
@@ -170,5 +198,6 @@ impl Game {
         self.open_cells = open_cells;
         self.apple = apple;
         self.snake = snake;
+        self.cycle = cycle;
     }
 }

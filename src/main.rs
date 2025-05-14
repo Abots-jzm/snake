@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 
+mod bot;
 mod game;
 mod snake;
 
