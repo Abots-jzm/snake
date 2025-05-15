@@ -8,7 +8,7 @@ pub enum Direction {
     Right,
 }
 
-pub fn generate_hamiltonian_cycle(width: i32, height: i32) -> Vec<(usize, usize)> {
+pub fn generate_hamiltonian_cycle(width: i32, height: i32) -> (Vec<(usize, usize)>, Vec<usize>) {
     if width != height {
         panic!("Width and height must be equal");
     }
@@ -19,7 +19,10 @@ pub fn generate_hamiltonian_cycle(width: i32, height: i32) -> Vec<(usize, usize)
 
     let arena_size = (width * height) as usize;
     let tour_to_number = generate_maze_tour(width, height);
-    get_cycle_positions(&tour_to_number, width, height, arena_size)
+    let positions = get_cycle_positions(&tour_to_number, width, height, arena_size);
+
+    // Return both the positions and the tour numbers
+    (positions, tour_to_number)
 }
 
 fn generate_maze_tour(width: i32, height: i32) -> Vec<usize> {
@@ -221,7 +224,6 @@ fn get_cycle_positions(
     positions
 }
 
-// Get the path number for a specific position
 fn get_path_number(tour_to_number: &[usize], (x, y): (i32, i32), arena_width: i32) -> usize {
     tour_to_number[(x + arena_width * y) as usize]
 }

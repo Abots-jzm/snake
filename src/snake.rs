@@ -3,19 +3,28 @@ use macroquad::prelude::*;
 pub const SNAKE_SPEED: f32 = 100.;
 pub const CELL_SIZE: f32 = 25.;
 pub const CELL_GAP: f32 = 2.5;
-const GROWTH_BUFFER_FOR_SHORTCUT: usize = 3;
+const GROWTH_BUFFER_FOR_SHORTCUT: usize = 25;
 
 // Helper function to get position index in cycle
 fn get_position_in_cycle(pos: (usize, usize), cycle: &[(usize, usize)]) -> Option<usize> {
     cycle.iter().position(|&p| p == pos)
 }
 
-// Helper function to calculate forward distance on cycle
-fn distance_on_cycle(from_idx: usize, to_idx: usize, cycle_len: usize) -> usize {
-    if to_idx >= from_idx {
-        to_idx - from_idx
+// Helper function to get tour number at a specific position
+fn get_tour_number(
+    position: (usize, usize),
+    tour_numbers: &[usize],
+    grid_width: usize,
+) -> Option<usize> {
+    if position.0 >= grid_width || position.1 >= tour_numbers.len() / grid_width {
+        return None;
+    }
+
+    let index = position.0 + position.1 * grid_width;
+    if index < tour_numbers.len() {
+        Some(tour_numbers[index])
     } else {
-        cycle_len - from_idx + to_idx
+        None
     }
 }
 
@@ -193,11 +202,13 @@ impl Snake {
 
     fn get_next_direction(
         &self,
-        cycle: &Vec<(usize, usize)>,
+        cycle: &[(usize, usize)],
         apple_pos: (usize, usize),
+        tour_numbers: &[usize],
     ) -> (i32, i32) {
         let map_width = screen_width() as usize / CELL_SIZE as usize;
         let map_height = screen_height() as usize / CELL_SIZE as usize;
+
         let head_pos = self.segments[0].cur;
         let current_snake_direction = self.direction;
 
@@ -207,7 +218,6 @@ impl Snake {
             if pos_to_check.0 >= map_width || pos_to_check.1 >= map_height {
                 return true;
             }
-            // Self-collision check (with body S1..Sn-1)
             for i in 1..self.segments.len() {
                 if pos_to_check == self.segments[i].cur {
                     return true;
@@ -219,57 +229,56 @@ impl Snake {
                 if proposed_dir.0 == -current_snake_direction.0
                     && proposed_dir.1 == -current_snake_direction.1
                 {
-                    return true; // Collision: trying to reverse
+                    return true;
                 }
             }
             false // No collision
         };
 
-        let head_on_cycle_opt = get_position_in_cycle(head_pos, cycle);
-        let food_on_cycle_opt = get_position_in_cycle(apple_pos, cycle);
+        let head_tour = get_tour_number(head_pos, tour_numbers, map_width);
+        let food_tour = get_tour_number(apple_pos, tour_numbers, map_width);
         let tail_pos = self.segments.last().expect("Snake must have segments").cur;
-        let tail_on_cycle_opt = get_position_in_cycle(tail_pos, cycle);
+        let tail_tour = get_tour_number(tail_pos, tour_numbers, map_width);
 
-        // Try article's AI logic if head, food, and tail are on the cycle and cycle exists
-        if !cycle.is_empty()
-            && head_on_cycle_opt.is_some()
-            && food_on_cycle_opt.is_some()
-            && tail_on_cycle_opt.is_some()
-        {
-            let head_path_number = head_on_cycle_opt.unwrap();
-            let food_path_number = food_on_cycle_opt.unwrap();
-            let tail_path_number = tail_on_cycle_opt.unwrap();
-            let cycle_len = cycle.len();
+        if !cycle.is_empty() && head_tour.is_some() && food_tour.is_some() && tail_tour.is_some() {
+            let head_tour_num = head_tour.unwrap();
+            let food_tour_num = food_tour.unwrap();
+            let tail_tour_num = tail_tour.unwrap();
+            let arena_size = tour_numbers.len();
 
-            let distance_to_food = distance_on_cycle(head_path_number, food_path_number, cycle_len);
-            let distance_to_tail = distance_on_cycle(head_path_number, tail_path_number, cycle_len);
+            let distance_to_food = if food_tour_num >= head_tour_num {
+                food_tour_num - head_tour_num
+            } else {
+                arena_size - head_tour_num + food_tour_num
+            };
 
-            let food_value = 1; // Assumed growth from one food item
-            let snake_growth_length = 0; // Placeholder for accumulated future growth from article's logic
+            let distance_to_tail = if tail_tour_num >= head_tour_num {
+                tail_tour_num - head_tour_num
+            } else {
+                arena_size - head_tour_num + tail_tour_num
+            };
 
-            let mut cutting_amount_available =
-                if distance_to_tail > snake_growth_length + GROWTH_BUFFER_FOR_SHORTCUT {
-                    distance_to_tail - snake_growth_length - GROWTH_BUFFER_FOR_SHORTCUT
-                } else {
-                    0
-                };
+            let food_value: usize = 1; // Growth from one apple
+
+            let mut cutting_amount_available = if distance_to_tail > GROWTH_BUFFER_FOR_SHORTCUT {
+                distance_to_tail - GROWTH_BUFFER_FOR_SHORTCUT
+            } else {
+                0
+            };
 
             let arena_size = map_width * map_height;
             let snake_drawn_length = self.segments.len();
             let num_empty_squares_on_board = arena_size
                 .saturating_sub(snake_drawn_length)
-                .saturating_sub(snake_growth_length)
                 .saturating_sub(food_value);
 
-            if num_empty_squares_on_board < arena_size / 2 {
-                cutting_amount_available = 0;
-            } else if distance_to_food < distance_to_tail {
+            if distance_to_food < distance_to_tail {
                 // Food is between head and tail on cycle
                 cutting_amount_available = cutting_amount_available.saturating_sub(food_value);
                 if (distance_to_tail.saturating_sub(distance_to_food)) * 4
                     > num_empty_squares_on_board
                 {
-                    let future_food_penalty = 10; // Magic number from article
+                    let future_food_penalty = 10;
                     cutting_amount_available =
                         cutting_amount_available.saturating_sub(future_food_penalty);
                 }
@@ -279,13 +288,10 @@ impl Snake {
             if cutting_amount_desired < cutting_amount_available {
                 cutting_amount_available = cutting_amount_desired;
             }
-            // Ensure cutting_amount_available is not negative (already handled by saturating_sub or initial check)
-            // cutting_amount_available is now the max "length" of shortcut on cycle (number of cycle steps).
 
             let mut best_dir_candidate: Option<(i32, i32)> = None;
             let mut best_dist_cut = -1isize; // Maximize this value (length of shortcut on cycle)
 
-            // Order of evaluation for shortcuts (Right, Left, Down, Up)
             let shortcut_eval_order = [
                 (1, 0),  // Right
                 (-1, 0), // Left
@@ -300,15 +306,18 @@ impl Snake {
                 if next_potential_x < 0 || next_potential_y < 0 {
                     continue;
                 }
+
                 let next_potential_pos = (next_potential_x as usize, next_potential_y as usize);
 
                 if !check_collision(next_potential_pos, dir_candidate) {
-                    if let Some(next_pos_path_number) =
-                        get_position_in_cycle(next_potential_pos, cycle)
+                    if let Some(next_pos_tour_num) =
+                        get_tour_number(next_potential_pos, tour_numbers, map_width)
                     {
-                        let dist_on_cycle_to_next =
-                            distance_on_cycle(head_path_number, next_pos_path_number, cycle_len)
-                                as isize;
+                        let dist_on_cycle_to_next = if next_pos_tour_num >= head_tour_num {
+                            next_pos_tour_num - head_tour_num
+                        } else {
+                            arena_size - head_tour_num + next_pos_tour_num
+                        } as isize;
 
                         if dist_on_cycle_to_next <= cutting_amount_available as isize
                             && dist_on_cycle_to_next > best_dist_cut
@@ -323,31 +332,53 @@ impl Snake {
             if let Some(dir) = best_dir_candidate {
                 return dir;
             }
-        }
 
-        // Fallback Logic:
-        // 1. Try default Hamiltonian cycle move (if head is on cycle and cycle exists)
-        if !cycle.is_empty() && head_on_cycle_opt.is_some() {
-            let head_idx = head_on_cycle_opt.unwrap();
-            // cycle.len() > 0 is guaranteed by !cycle.is_empty()
-            let next_target_idx = (head_idx + 1) % cycle.len();
-            let next_target_pos = cycle[next_target_idx];
-            let default_cycle_dir = (
-                next_target_pos.0 as i32 - head_pos.0 as i32,
-                next_target_pos.1 as i32 - head_pos.1 as i32,
-            );
-            if !check_collision(next_target_pos, default_cycle_dir) {
-                return default_cycle_dir;
+            // Fallback: Follow the Hamiltonian cycle by finding the next position in the tour
+            let next_tour_num = (head_tour_num + 1) % arena_size;
+            for &dir_candidate in &shortcut_eval_order {
+                let next_potential_x = head_pos.0 as i32 + dir_candidate.0;
+                let next_potential_y = head_pos.1 as i32 + dir_candidate.1;
+
+                if next_potential_x < 0 || next_potential_y < 0 {
+                    continue;
+                }
+
+                let next_potential_pos = (next_potential_x as usize, next_potential_y as usize);
+
+                if !check_collision(next_potential_pos, dir_candidate) {
+                    if let Some(tour_num) =
+                        get_tour_number(next_potential_pos, tour_numbers, map_width)
+                    {
+                        if tour_num == next_tour_num {
+                            return dir_candidate;
+                        }
+                    }
+                }
             }
         }
 
-        // 2. Article's ordered fallback moves (Up, Left, Down, Right)
+        // Fallback: Try default Hamiltonian cycle move (using positions)
+        if !cycle.is_empty() {
+            if let Some(head_idx) = get_position_in_cycle(head_pos, cycle) {
+                let next_target_idx = (head_idx + 1) % cycle.len();
+                let next_target_pos = cycle[next_target_idx];
+                let default_cycle_dir = (
+                    next_target_pos.0 as i32 - head_pos.0 as i32,
+                    next_target_pos.1 as i32 - head_pos.1 as i32,
+                );
+                if !check_collision(next_target_pos, default_cycle_dir) {
+                    return default_cycle_dir;
+                }
+            }
+        }
+
         let fallback_moves_ordered = [
             (0, -1), // Up
             (-1, 0), // Left
             (0, 1),  // Down
             (1, 0),  // Right
         ];
+
         for &fallback_dir in &fallback_moves_ordered {
             let next_potential_x = head_pos.0 as i32 + fallback_dir.0;
             let next_potential_y = head_pos.1 as i32 + fallback_dir.1;
@@ -361,8 +392,6 @@ impl Snake {
             }
         }
 
-        // 3. Absolute final fallback (snake is likely trapped)
-        // Return the last direction from fallback_moves_ordered (Right), as per article.
         return fallback_moves_ordered.last().cloned().unwrap_or((1, 0)); // Default to Right
     }
 
@@ -370,8 +399,9 @@ impl Snake {
         &mut self,
         cycle: &Vec<(usize, usize)>,
         apple_pos: (usize, usize),
+        tour_numbers: &[usize],
     ) -> ((usize, usize), (usize, usize)) {
-        let future_direction = self.get_next_direction(cycle, apple_pos);
+        let future_direction = self.get_next_direction(cycle, apple_pos, tour_numbers);
         self.direction = future_direction;
 
         // Save current positions before moving

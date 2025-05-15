@@ -12,6 +12,7 @@ pub struct Game {
     open_cells: Vec<(usize, usize)>,
     apple: (usize, usize),
     cycle: Vec<(usize, usize)>,
+    tour_numbers: Vec<usize>,
     draw_cycle: bool,
     speed_multiplier: f32,
 }
@@ -39,7 +40,8 @@ impl Game {
         let apple_index = rand::gen_range(0, open_cells.len());
         let apple = open_cells[apple_index];
 
-        let cycle = generate_hamiltonian_cycle(grid_width as i32, grid_height as i32);
+        let (cycle, tour_numbers) =
+            generate_hamiltonian_cycle(grid_width as i32, grid_height as i32);
 
         Game {
             score: 0,
@@ -49,6 +51,7 @@ impl Game {
             open_cells,
             apple,
             cycle,
+            tour_numbers,
             draw_cycle: false, // Default to false
             speed_multiplier: 1.0,
         }
@@ -62,7 +65,7 @@ impl Game {
         self.step_timer += delta_time;
 
         if self.step_timer >= 1. / (SNAKE_SPEED * self.speed_multiplier) {
-            let (head, tail) = self.snake.step(&self.cycle, self.apple);
+            let (head, tail) = self.snake.step(&self.cycle, self.apple, &self.tour_numbers);
             // remove head from open_cells
             self.open_cells.retain(|&cell| cell != head);
             // add tail to open_cells
@@ -333,7 +336,8 @@ impl Game {
 
         let apple_index = rand::gen_range(0, open_cells.len());
         let apple = open_cells[apple_index];
-        let cycle = generate_hamiltonian_cycle(grid_width as i32, grid_height as i32);
+        let (cycle, tour_numbers) =
+            generate_hamiltonian_cycle(grid_width as i32, grid_height as i32);
 
         self.score = 0;
         self.is_over = false;
@@ -342,6 +346,7 @@ impl Game {
         self.apple = apple;
         self.snake = snake;
         self.cycle = cycle;
+        self.tour_numbers = tour_numbers;
         // Keep existing settings for draw_cycle and speed_multiplier
     }
 }
