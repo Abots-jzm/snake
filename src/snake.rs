@@ -53,8 +53,8 @@ impl Snake {
         }
     }
 
-    pub fn draw(&self, snake_timer: f32, speed_multiplier: f32) {
-        let ratio = (snake_timer * SNAKE_SPEED * speed_multiplier).min(1.0);
+    pub fn draw(&self, snake_timer: f32) {
+        let ratio = (snake_timer * SNAKE_SPEED).min(1.0);
         let mut last_was_corner = false;
 
         for (i, segment) in self.segments.iter().enumerate() {

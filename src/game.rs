@@ -96,7 +96,7 @@ impl Game {
         if self.draw_cycle {
             self.draw_cycle_path();
         }
-        self.snake.draw(self.step_timer, self.speed_multiplier);
+        self.snake.draw(self.step_timer);
         self.draw_apple();
         self.draw_score();
         self.draw_controls();
