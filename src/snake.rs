@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-pub const SNAKE_SPEED: f32 = 100.;
+pub const SNAKE_SPEED: f32 = 10.;
 pub const CELL_SIZE: f32 = 25.;
 pub const CELL_GAP: f32 = 2.5;
 const GROWTH_BUFFER_FOR_SHORTCUT: usize = 25;
@@ -53,8 +53,8 @@ impl Snake {
         }
     }
 
-    pub fn draw(&self, snake_timer: f32) {
-        let ratio = (snake_timer * SNAKE_SPEED).min(1.0);
+    pub fn draw(&self, snake_timer: f32, speed_multiplier: f32) {
+        let ratio = (snake_timer * SNAKE_SPEED * speed_multiplier).min(1.0);
         let mut last_was_corner = false;
 
         for (i, segment) in self.segments.iter().enumerate() {

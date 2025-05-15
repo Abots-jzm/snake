@@ -23,7 +23,6 @@ impl Game {
         let screen_height = screen_height();
 
         let snake = Snake::spawn_on_map(5, 5, 4);
-        // open_cells should be a vector of tuples (x, y) representing the available cells for the apple i.e entire map - snake cells
 
         let grid_width = screen_width / CELL_SIZE;
         let grid_height = screen_height / CELL_SIZE;
@@ -52,8 +51,8 @@ impl Game {
             apple,
             cycle,
             tour_numbers,
-            draw_cycle: false, // Default to false
-            speed_multiplier: 1.0,
+            draw_cycle: false,
+            speed_multiplier: 5.0,
         }
     }
 
@@ -97,7 +96,7 @@ impl Game {
         if self.draw_cycle {
             self.draw_cycle_path();
         }
-        self.snake.draw(self.step_timer);
+        self.snake.draw(self.step_timer, self.speed_multiplier);
         self.draw_apple();
         self.draw_score();
         self.draw_controls();
@@ -213,7 +212,6 @@ impl Game {
     }
 
     fn update_controls(&mut self) {
-        // Check for speed slider interaction
         let screen_width = screen_width();
         let control_y = 10.0;
         let speed_y = control_y + 10.0;
@@ -223,7 +221,6 @@ impl Game {
         let slider_width = 100.0;
         let slider_height = 10.0;
 
-        // Check if mouse is pressed on slider
         if is_mouse_button_down(MouseButton::Left) {
             let mouse_pos = mouse_position();
 
@@ -233,14 +230,12 @@ impl Game {
                 && mouse_pos.0 >= slider_x
                 && mouse_pos.0 <= slider_x + slider_width
             {
-                // Calculate new speed value
                 let normalized_pos = (mouse_pos.0 - slider_x) / slider_width;
                 let clamped_pos = normalized_pos.max(0.0).min(1.0);
                 // Map 0.0-1.0 to 0.5-100.0
                 self.speed_multiplier = 0.5 + (clamped_pos * 99.5);
             }
 
-            // Cycle visibility checkbox interaction
             let cycle_y = speed_y + 25.0;
             let checkbox_x = slider_x;
             let checkbox_size = 15.0;
@@ -289,7 +284,7 @@ impl Game {
         let screen_height = screen_height();
         let text_width = measure_text(game_over_text, None, 20, 1.0).width;
         let text_x = (screen_width - text_width) / 2.0;
-        let text_y = screen_height - 50.0; // 50 pixels from the bottom
+        let text_y = screen_height - 50.0;
         draw_rectangle(
             0.0,
             0.0,
@@ -309,8 +304,6 @@ impl Game {
             }
             return;
         }
-
-        // self.snake.handle_input();
     }
 
     fn check_for_death(&mut self) {
@@ -347,6 +340,5 @@ impl Game {
         self.snake = snake;
         self.cycle = cycle;
         self.tour_numbers = tour_numbers;
-        // Keep existing settings for draw_cycle and speed_multiplier
     }
 }
